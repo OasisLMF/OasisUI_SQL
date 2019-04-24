@@ -284,6 +284,10 @@ def do_run_prog_oasis(processrunid):
         df_fmdict = pd.read_csv(fmdict)
         df_fmdict["policy_layer"] = df_fmdict["policy_name"].map(str) + '--' + df_fmdict["layer_name"].map(str)
         df_fmdict["summary_id"] = (df_fmdict["agg_id"] * 1000 + df_fmdict["layer_id"]).rank(method="dense").astype(int)
+        df_accnums = df_fmdict.drop_duplicates(subset=['item_id','policy_name'])[['item_id','policy_name']]
+	df_accnums.columns = ['item_id','account_desc']
+	df_itemdict = pd.merge(df_itemdict,df_accnums)
+	df_itemdict["location_desc"] = df_itemdict["account_desc"].map(str) + '--' + df_itemdict["location_desc"].map(str)
 
         for index, row in df_output_file_details.iterrows():
             output = upload_directory + '/output/' + row['FileName']
