@@ -19,10 +19,10 @@ import pandas as pd
 
 # Oasis imports
 from oasislmf.api_client.client import OasisAPIClient
-from oasislmf.exposures.csv_trans import Translator
-from oasislmf.exposures.oed import OedValidator
-from oasislmf.exposures.oed import load_oed_dfs
-from oasislmf.exposures.reinsurance_layer import generate_files_for_reinsurance
+from oasislmf.model_preparation.csv_trans import Translator
+from oasislmf.model_preparation.oed import OedValidator
+from oasislmf.model_preparation.oed import load_oed_dfs
+from oasislmf.model_preparation.reinsurance_layer import generate_files_for_reinsurance
 from oasislmf.utils import status as status_code
 from oasislmf.utils import (
     log,
