@@ -329,3 +329,8 @@ def get_output_file_details(processrunid):
         join    summarylevel as sl on ot.SummaryLevelID = sl.SummaryLevelID
         where   pr.ProcessRunID = ?
         """, processrunid)
+
+def drop_flamingo_tables(guid):
+    guid = db.fetchone(
+        "exec dbo.dropFlamingoTables ?", guid)[0]
+    
