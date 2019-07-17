@@ -630,6 +630,7 @@ def do_generate_oasis_files(progoasisid):
     if status != "Done":
         raise Exception("Failed to generate Oasis files")
 
+
     progoasis_dir = "ProgOasis_" + progoasisid
     input_location = OASIS_FILES_DIRECTORY + "/" + progoasis_dir
     if not os.path.isdir(input_location):
