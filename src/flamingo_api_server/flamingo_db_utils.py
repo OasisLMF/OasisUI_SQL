@@ -259,9 +259,9 @@ def get_filename(file_id):
 
 @oasis_log()
 def generate_oasis_files(progoasisid):
-    status = db.fetch_one(
+    status,guid = db.fetchall(
         "exec dbo.generateOasisFiles2 ?", progoasisid)[0]
-    return status
+    return status,guid
 
 
 @oasis_log()

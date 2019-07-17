@@ -19,10 +19,10 @@ import pandas as pd
 
 # Oasis imports
 from oasislmf.api_client.client import OasisAPIClient
-from oasislmf.model_preparation.csv_trans import Translator
-from oasislmf.model_preparation.oed import OedValidator
-from oasislmf.model_preparation.oed import load_oed_dfs
-from oasislmf.model_preparation.reinsurance_layer import generate_files_for_reinsurance
+from oasislmf.exposures.csv_trans import Translator
+from oasislmf.exposures.oed import OedValidator
+from oasislmf.exposures.oed import load_oed_dfs
+from oasislmf.exposures.reinsurance_layer import generate_files_for_reinsurance
 from oasislmf.utils import status as status_code
 from oasislmf.utils import (
     log,
@@ -284,10 +284,6 @@ def do_run_prog_oasis(processrunid):
         df_fmdict = pd.read_csv(fmdict)
         df_fmdict["policy_layer"] = df_fmdict["policy_name"].map(str) + '--' + df_fmdict["layer_name"].map(str)
         df_fmdict["summary_id"] = (df_fmdict["agg_id"] * 1000 + df_fmdict["layer_id"]).rank(method="dense").astype(int)
-        df_accnums = df_fmdict.drop_duplicates(subset=['item_id','policy_name'])[['item_id','policy_name']]
-	df_accnums.columns = ['item_id','account_desc']
-	df_itemdict = pd.merge(df_itemdict,df_accnums)
-        df_itemdict["location_desc"] = df_itemdict["account_desc"].map(str) + '--' + df_itemdict["location_desc"].map(str)
 
         for index, row in df_output_file_details.iterrows():
             output = upload_directory + '/output/' + row['FileName']
@@ -628,8 +624,9 @@ def do_generate_oasis_files(progoasisid):
 
     location_id = -1
     progid = flamingo_db_utils.get_ProgId_For_ProgOasis(progoasisid)[0]
-    status = flamingo_db_utils.generate_oasis_files(progoasisid)
-
+    val = flamingo_db_utils.generate_oasis_files(progoasisid)
+    status,guid = val[0],val[1]        
+    logging.getLogger().info("guid: {}".format(guid))
     if status != "Done":
         raise Exception("Failed to generate Oasis files")
 
@@ -654,14 +651,16 @@ def do_generate_oasis_files(progoasisid):
     itemdict = input_location + "/ItemDict.csv"
     fmdict = input_location + "/FMDict.csv"
 
-    db.bcp("OasisCOVERAGES", OASIS_FILES_DIRECTORY + "/Coverages_temp.csv")
-    db.bcp("OasisITEMS", OASIS_FILES_DIRECTORY + "/Items_temp.csv")
-    db.bcp("OasisFM_PROGRAMME", OASIS_FILES_DIRECTORY + "/FMProgramme_temp.csv")
-    db.bcp("OasisFM_POLICYTC", OASIS_FILES_DIRECTORY + "/FMPolicyTC_temp.csv")
-    db.bcp("OasisFM_PROFILE", OASIS_FILES_DIRECTORY + "/FMProfile_temp.csv")
-    db.bcp("OasisFM_XREF", OASIS_FILES_DIRECTORY + "/FMXRef_temp.csv")
-    db.bcp("OasisITEMDICT", OASIS_FILES_DIRECTORY + "/ItemDict_temp.csv")
-    db.bcp("OasisFMDICT", OASIS_FILES_DIRECTORY + "/FMDict_temp.csv")
+    
+
+    db.bcp("FlamingoCOVERAGES_"+guid, OASIS_FILES_DIRECTORY + "/Coverages_temp.csv")
+    db.bcp("FlamingoITEMS_"+guid, OASIS_FILES_DIRECTORY + "/Items_temp.csv")
+    db.bcp("FlamingoFMPROGRAMME_"+guid, OASIS_FILES_DIRECTORY + "/FMProgramme_temp.csv")
+    db.bcp("FlamingoFMPOLICYTC_"+guid, OASIS_FILES_DIRECTORY + "/FMPolicyTC_temp.csv")
+    db.bcp("FlamingoFMPROFILE_"+guid, OASIS_FILES_DIRECTORY + "/FMProfile_temp.csv")
+    db.bcp("FlamingoFMXREF_"+guid, OASIS_FILES_DIRECTORY + "/FMXRef_temp.csv")
+    db.bcp("FlamingoITEMDICT_"+guid, OASIS_FILES_DIRECTORY + "/ItemDict_temp.csv")
+    db.bcp("FlamingoFMDICT_"+guid, OASIS_FILES_DIRECTORY + "/FMDict_temp.csv")
 
     destination = open(coverages, 'wb')
     destination.write("coverage_id,tiv\n")
