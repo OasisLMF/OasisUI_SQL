@@ -330,7 +330,7 @@ def get_output_file_details(processrunid):
         where   pr.ProcessRunID = ?
         """, processrunid)
 
+@oasis_log()
 def drop_flamingo_tables(guid):
-    guid = db.fetchone(
-        "exec dbo.dropFlamingoTables ?", guid)[0]
-    
+    db.execute(
+        "exec dbo.dropFlamingoTables ?",guid)

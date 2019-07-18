@@ -625,11 +625,10 @@ def do_generate_oasis_files(progoasisid):
     location_id = -1
     progid = flamingo_db_utils.get_ProgId_For_ProgOasis(progoasisid)[0]
     val = flamingo_db_utils.generate_oasis_files(progoasisid)
-    status,guid = val[0],val[1]        
+    status,guid = val[0],val[1]
     logging.getLogger().info("guid: {}".format(guid))
     if status != "Done":
         raise Exception("Failed to generate Oasis files")
-
 
     progoasis_dir = "ProgOasis_" + progoasisid
     input_location = OASIS_FILES_DIRECTORY + "/" + progoasis_dir
@@ -652,8 +651,6 @@ def do_generate_oasis_files(progoasisid):
     itemdict = input_location + "/ItemDict.csv"
     fmdict = input_location + "/FMDict.csv"
 
-    
-
     db.bcp("FlamingoCOVERAGES_"+guid, OASIS_FILES_DIRECTORY + "/Coverages_temp.csv")
     db.bcp("FlamingoITEMS_"+guid, OASIS_FILES_DIRECTORY + "/Items_temp.csv")
     db.bcp("FlamingoFMPROGRAMME_"+guid, OASIS_FILES_DIRECTORY + "/FMProgramme_temp.csv")
@@ -662,6 +659,8 @@ def do_generate_oasis_files(progoasisid):
     db.bcp("FlamingoFMXREF_"+guid, OASIS_FILES_DIRECTORY + "/FMXRef_temp.csv")
     db.bcp("FlamingoITEMDICT_"+guid, OASIS_FILES_DIRECTORY + "/ItemDict_temp.csv")
     db.bcp("FlamingoFMDICT_"+guid, OASIS_FILES_DIRECTORY + "/FMDict_temp.csv")
+
+    flamingo_db_utils.drop_flamingo_tables(guid)
 
     destination = open(coverages, 'wb')
     destination.write("coverage_id,tiv\n")
@@ -714,7 +713,7 @@ def do_generate_oasis_files(progoasisid):
     os.remove(OASIS_FILES_DIRECTORY + "/FMDict_temp.csv")
 
     flamingo_db_utils.generate_oasis_file_records(progoasisid, location_id)
-
+     
     try:
         reins_info_file = flamingo_db_utils.get_source_reinsurance_file_for_prog(progid)[0]
         reins_scope_file = flamingo_db_utils.get_source_reinsurance_scope_file_for_prog(progid)[0]
