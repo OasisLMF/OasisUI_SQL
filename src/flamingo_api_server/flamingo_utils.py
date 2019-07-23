@@ -20,9 +20,9 @@ import pandas as pd
 # Oasis imports
 from oasislmf.api_client.client import OasisAPIClient
 from oasislmf.model_preparation.csv_trans import Translator
-from oasislmf.model_preparation.oed import OedValidator
-from oasislmf.model_preparation.oed import load_oed_dfs
-from oasislmf.model_preparation.reinsurance_layer import generate_files_for_reinsurance
+from reinsurance_modules.oed import OedValidator
+from reinsurance_modules.oed import load_oed_dfs
+from reinsurance_modules.reinsurance_layer import write_files_for_reinsurance as generate_files_for_reinsurance
 from oasislmf.utils import status as status_code
 from oasislmf.utils import (
     log,
@@ -287,7 +287,7 @@ def do_run_prog_oasis(processrunid):
         df_accnums = df_fmdict.drop_duplicates(subset=['item_id','policy_name'])[['item_id','policy_name']]
 	df_accnums.columns = ['item_id','account_desc']
 	df_itemdict = pd.merge(df_itemdict,df_accnums)
-	df_itemdict["location_desc"] = df_itemdict["account_desc"].map(str) + '--' + df_itemdict["location_desc"].map(str)
+        df_itemdict["location_desc"] = df_itemdict["account_desc"].map(str) + '--' + df_itemdict["location_desc"].map(str)
 
         for index, row in df_output_file_details.iterrows():
             output = upload_directory + '/output/' + row['FileName']
@@ -787,9 +787,11 @@ def do_generate_reinsurance_files(progoasisid):
     fm_dict = pd.read_csv(fm_dict_file)
     combined_dict = item_dict.merge(fm_dict, on=('item_id'))
     xref_description = combined_dict[['layer_name','policy_name','location_desc',
-        'portfolionumber_desc','locationgroup_desc']]
-    xref_description.columns = ['policy_number','account_number','location_number',
-        'portfolio_number','location_group']
+        'portfolionumber_desc','locationgroup_desc',"output_id"]]
+    xref_description.columns = ['polnumber','accnumber','locnumber',
+        'portnumber','locgroup','output_id']
+    #xref_description.columns = ['policy_number','account_number','location_number',
+    #    'portfolio_number','location_group']
     xref_description['xref_id'] = xref_description.index + 1
     xref_description['coverage_type_id'] = 1
     xref_description['peril_id'] = 1
@@ -802,21 +804,25 @@ def do_generate_reinsurance_files(progoasisid):
     xref_description['reins_tag'] = ''
     xref_description['tiv'] = 1
 
-    xref_description = xref_description[['portfolio_number','xref_id','policy_number','account_number',
-        'location_number','location_group','cedant_name','producer_name','lob','country_code','reins_tag',
-        'coverage_type_id','peril_id','tiv']]
+    xref_description = xref_description[['portnumber','xref_id','polnumber','accnumber',
+        'locnumber','locgroup','cedant_name','producer_name','lob','country_code','reins_tag',
+        'coverage_type_id','peril_id','tiv','output_id']]
     xref_description_file = input_location + '/xref_descriptions.csv'
     xref_description.to_csv(xref_description_file, index=False)
 
     # generate dfs
     #(account_df, location_df, ri_info_df, ri_scope_df, do_reinsurance) = load_oed_dfs(oed_location)
-    (ri_info_df, ri_scope_df, do_reinsurance) = load_oed_dfs(oed_location)
+    oed_ri_info_file = "{}/ri_info.csv".format(oed_location)
+    oed_ri_scope_file = "{}/ri_scope.csv".format(oed_location)
+    (ri_info_df, ri_scope_df, do_reinsurance) = load_oed_dfs(oed_ri_info_file,oed_ri_scope_file)
 
     # direct layers
     items = pd.read_csv(input_location + "/items.csv")
     coverages = pd.read_csv(input_location + "/coverages.csv")
-    fm_xrefs = pd.read_csv(input_location + "/fm_xref.csv")
-    xref_descriptions = pd.read_csv(input_location + "/xref_descriptions.csv")
+    gul_inputs_df = pd.merge(items,coverages,on="coverage_id")
+    fm_xrefs_fp = input_location + "/fm_xref.csv"
+    fm_xrefs = pd.read_csv(fm_xrefs_fp)
+    xref_descriptions_df = pd.read_csv(input_location + "/xref_descriptions.csv")
 
     validate_inst = OedValidator()
     #(main_is_valid, inuring_layers) = validate_inst.validate(account_df, location_df, ri_info_df, ri_scope_df)
@@ -838,12 +844,11 @@ def do_generate_reinsurance_files(progoasisid):
     generate_files_for_reinsurance(
             #account_df,
             #location_df,
-            items,
-            coverages,
-            fm_xrefs,
-            xref_descriptions,
+            gul_inputs_df,
+            xref_descriptions_df,
             ri_info_df,
             ri_scope_df,
+            fm_xrefs_fp,
             input_location)
 
 
