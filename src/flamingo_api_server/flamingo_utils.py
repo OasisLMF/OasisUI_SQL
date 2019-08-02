@@ -159,6 +159,7 @@ def do_load_programme_model(progoasisid):
 
         do_call_keys_service(progoasisid)
         do_generate_oasis_files(progoasisid)
+        flamingo_db_utils.update_progoasis_status(progoasisid, "Loaded")
 
     except:
         logging.getLogger().exception("Error in do_load_programme_model")
