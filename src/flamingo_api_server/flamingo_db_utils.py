@@ -113,9 +113,9 @@ def get_element_run_ids(processrunid):
 
 
 @oasis_log()
-def generate_oasis_files_outputs(processrunid):
-    db.execute(
-        "exec dbo.generateOasisFilesOutputs ?", processrunid)
+def generate_oasis_files_outputs(processrunid,guid):
+    processrunid,guid = db.execute(
+        "exec dbo.generateOasisFilesOutputs ?", processrunid,guid)[0]
 
 
 @oasis_log()
@@ -142,7 +142,8 @@ def generate_oasis_files_records_outputs(
             @ProcessRunId = ?, 
             @LocationID = ?,
             @GulSummaryXrefFileName = ?,
-            @FMSummaryXrefFileName = ?
+            @FMSummaryXrefFileName = ?,
+            @GUID_CLEAN = ?
         """,
         processrunid, process_run_locationid, 
         'gulsummaryxref.csv' , 'fmsummaryxref.csv')

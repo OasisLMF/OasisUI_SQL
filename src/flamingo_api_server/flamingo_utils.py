@@ -321,9 +321,11 @@ def do_run_prog_oasis(processrunid):
 @log.oasis_log()
 def generate_summary_files(processrunid):
 
-    flamingo_db_utils.generate_oasis_files_outputs(processrunid)
+    var = flamingo_db_utils.generate_oasis_files_outputs(processrunid,guid)
     prog_oasis_location = \
         flamingo_db_utils.get_prog_oasis_location(processrunid)
+    guid = var[0]
+    logging.getLogger().info("guid: {}".format(guid))
 
     ts = values.get_timestamp()
     process_dir = "ProcessRun_" + str(processrunid) + "_" + ts
@@ -354,9 +356,9 @@ def generate_summary_files(processrunid):
         else:
             shutil.copytree(ri_full_path, ri_target_path)
 
-    db.bcp("OasisGULSUMMARYXREF", input_location+ "/gulsummaryxref_temp.csv")
-    db.bcp("OasisFMSUMMARYXREF", input_location + "/fmsummaryxref_temp.csv")
-    db.bcp("OasisRISUMMARYXREF", input_location + "/risummaryxref_temp.csv")
+    db.bcp("FlamingoGULSUMMARYXREF_"+guid, input_location+ "/gulsummaryxref_temp.csv")
+    db.bcp("FlamingoFMSUMMARYXREF_"+guid, input_location + "/fmsummaryxref_temp.csv")
+    db.bcp("FlamingoSUMMARYXREF_"+guid, input_location + "/risummaryxref_temp.csv")
 
     gulsummaryxref = input_location + "/gulsummaryxref.csv"
     destination = open(gulsummaryxref, 'wb')
