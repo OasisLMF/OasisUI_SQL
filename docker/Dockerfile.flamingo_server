@@ -1,4 +1,5 @@
-FROM coreoasis/oasis_base:latest
+FROM coreoasis/oasis_base:0.398.1
+#FROM oasis_base:testRI
 
 # Create and switch to jenkins user
 #ARG USER_ID
@@ -16,6 +17,10 @@ RUN mkdir /var/log/oasis && \
     touch /var/log/oasis/flamingo_api.log && \
     chmod 777 /var/log/oasis/flamingo_api.log
 
+RUN touch /var/log/oasis/flamingo_api.log && \
+    chmod 777 /var/log/oasis/flamingo_api.log
+
+
 COPY src/flamingo_api_server /var/www/oasis/flamingo_api_server
 COPY config/freetds.conf /etc/freetds/ 
 COPY config/odbc.ini /etc/
@@ -23,7 +28,11 @@ COPY config/odbcinst.ini /etc/
 COPY src/shell-scripts/set_ini.sh /var/www/oasis/
 COPY src/shell-scripts/startup.sh  /usr/local/bin
 
-RUN apt-get update -y && apt-get install -y libgfortran3 tdsodbc freetds-bin
+RUN DEBIAN_FRONTEND=noninteractive apt update -y
+RUN apt install -y libgfortran3 
+RUN apt install -y tdsodbc 
+RUN apt install -y freetds-bin
+RUN apt install -y apache2 libapache2-mod-wsgi
 RUN pip install -r /var/www/oasis/flamingo_api_server/requirements.txt
 
 RUN chmod +x /usr/local/bin/startup.sh
