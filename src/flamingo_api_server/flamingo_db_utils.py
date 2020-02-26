@@ -329,3 +329,17 @@ def get_output_file_details(processrunid):
         join    summarylevel as sl on ot.SummaryLevelID = sl.SummaryLevelID
         where   pr.ProcessRunID = ?
         """, processrunid)
+
+@oasis_log()
+def update_process_run_api_status(processrunid, analysisstatuslocation, element_run_ids,
+                upload_directory,base_url,input_location):
+    db.execute(
+        "exec createProcessRunAPIStatus ?, ?, ?, ?, ?, ?",
+        processrunid, analysisstatuslocation, str(element_run_ids),upload_directory,base_url,input_location)
+
+    
+@oasis_log()
+def get_stalled_analyses():
+    return db.fetchall(
+        "exec dbo.getIncompleteAnalyses")
+

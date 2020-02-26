@@ -15,6 +15,7 @@ from oasislmf.utils import (
 )
 
 import flamingo_utils
+import flamingo_check_analyses
 
 app = Flask(__name__)
 
@@ -45,7 +46,12 @@ else:
     logger.exception("Failed to connect to Flamingo database")
     exit()
 
+#check incomplete analyses
+logger.info("Checking for incomplete prior runs")
+flamingo_check_analyses.check_analyses()
 
+
+#app functions
 @app.route("/healthcheck")
 @log.oasis_log()
 def healthcheck():

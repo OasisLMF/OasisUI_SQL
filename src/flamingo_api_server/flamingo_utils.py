@@ -32,7 +32,7 @@ from oasislmf.utils import (
 )
 
 import flamingo_db_utils
-
+from garbage import force_gc_collect
 
 ENVIRONMENT = ""
 FILES_DIRECTORY = ""
@@ -76,7 +76,7 @@ def _do_transform(
     translator()
     return _check_file(destinationfilename)
 
-
+@force_gc_collect
 @log.oasis_log()
 def transform_source_to_canonical(
     progid, sourcefilename, validationfilelocname, transformationfilename,
@@ -92,7 +92,7 @@ def transform_source_to_canonical(
         flamingo_db_utils.update_prog_status(progid, "Failed")
 
 
-
+@force_gc_collect
 @log.oasis_log()
 def transform_canonical_to_model(
     progoasisid, sourcefilename, validationfilelocname, transformationfilename,
@@ -107,6 +107,7 @@ def transform_canonical_to_model(
     if trasform_status is False:
         flamingo_db_utils.update_progoasis_status(progoasisid, "Failed")
 
+@force_gc_collect
 @log.oasis_log()
 def do_load_programme_data(progid):
     '''
@@ -140,7 +141,7 @@ def do_load_programme_data(progid):
         logging.getLogger().exception("Error in do_load_programme_data")
         flamingo_db_utils.update_prog_status(progid, "Failed")
 
-
+@force_gc_collect
 @log.oasis_log()
 def do_load_programme_model(progoasisid):
     '''
@@ -165,7 +166,7 @@ def do_load_programme_model(progoasisid):
         logging.getLogger().exception("Error in do_load_programme_model")
         flamingo_db_utils.update_progoasis_status(progoasisid, "Failed")
 
-
+@force_gc_collect
 @log.oasis_log()
 def do_run_prog_oasis(processrunid):
     '''
@@ -222,36 +223,67 @@ def do_run_prog_oasis(processrunid):
         analysis_status_location = client.run_analysis(
             analysis_settings_json, input_location)
 
+        flamingo_db_utils.update_process_run_api_status(
+                processrunid, analysis_status_location, element_run_ids,
+                upload_directory,base_url,input_location)
+
         flamingo_db_utils.log_element_run_to_db(
             element_run_id, "Success", "Started analysis")
 
-        element_run_id = element_run_ids[2][0]
-        outputs_location = ""
-        while True:
-            logging.getLogger().debug(
-                "Polling analysis status for: {}".format(analysis_status_location))
-            (status, outputs_location) = \
-                client.get_analysis_status(analysis_status_location)
-            flamingo_db_utils.log_element_run_to_db(element_run_id, status, "In Progress")
+        logging.getLogger().info('processrunid: {},analysis_status_location: {},element_run_ids: {},upload_directory: {},base_url,input_location: {}'.format(
+            processrunid,analysis_status_location,element_run_ids,upload_directory,base_url,input_location))
+        do_poll_analysis(processrunid,analysis_status_location,element_run_ids,
+                upload_directory,base_url,input_location)
 
-            if status == status_code.STATUS_SUCCESS:
-                if outputs_location is None:
-                    raise Exception("Complete but no outputs location")
-                flamingo_db_utils.log_element_run_to_db(
-                    element_run_id, status, "Analysis Completed")
-                break
-            elif status == status_code.STATUS_FAILURE:
-                error_message = "Analysis failed: {}".format(message)
-                logging.getLogger().error(error_message)
-                raise Exception(error_message)
-            time.sleep(analysis_poll_interval_in_seconds)
-        element_run_id = element_run_ids[3][0]
+    except Exception as e:
+        flamingo_db_utils.update_process_run_status(processrunid, "Failed")
+        if element_run_id != -1:
+            flamingo_db_utils.log_element_run_to_db(element_run_id, 'Failed: ', str(e))
+        logging.getLogger().exception(
+            "Failed to run prog oasis: {}".format(processrunid))
 
-        # download outputs and cleanup
-        outputs_file = os.path.join(
-            upload_directory,
-            outputs_location + ".tar.gz"
-        )
+@force_gc_collect
+@log.oasis_log()
+def do_poll_analysis(processrunid,analysis_status_location,element_run_ids,upload_directory,
+        base_url,input_location):
+    '''
+    Run an analysis.
+    '''
+    logging.getLogger().debug("processrunid: {},analysis_status_location: {},element_run_ids: {},upload_directory: {},base_url: {},input_location: {}".format(
+        processrunid,analysis_status_location,element_run_ids,upload_directory,base_url,input_location))
+    outputs_location = ""
+    analysis_poll_interval_in_seconds = 5
+    client = OasisAPIClient(base_url, logging.getLogger())
+    element_run_id = element_run_ids[2][0]
+    logging.getLogger().info(
+        "Starting poll for location {}".format(analysis_status_location))
+
+    while True:
+        logging.getLogger().debug(
+            "Polling analysis status for: {}".format(analysis_status_location))
+        (status, outputs_location) = \
+            client.get_analysis_status(analysis_status_location)
+        flamingo_db_utils.log_element_run_to_db(element_run_id, status, "In Progress")
+
+        if status == status_code.STATUS_SUCCESS:
+            if outputs_location is None:
+                raise Exception("Complete but no outputs location")
+            flamingo_db_utils.log_element_run_to_db(
+                element_run_id, status, "Analysis Completed")
+            break
+        elif status == status_code.STATUS_FAILURE:
+            error_message = "Analysis failed: {}".format(message)
+            logging.getLogger().error(error_message)
+            raise Exception(error_message)
+        time.sleep(analysis_poll_interval_in_seconds)
+    element_run_id = element_run_ids[3][0]
+
+    # download outputs and cleanup
+    outputs_file = os.path.join(
+        upload_directory,
+        outputs_location + ".tar.gz"
+    )
+    if not os.path.exists(outputs_file):
         client.download_outputs(outputs_location, outputs_file)
         client.delete_exposure(input_location)
         client.delete_outputs(outputs_location)
@@ -286,8 +318,8 @@ def do_run_prog_oasis(processrunid):
         df_fmdict["policy_layer"] = df_fmdict["policy_name"].map(str) + '--' + df_fmdict["layer_name"].map(str)
         df_fmdict["summary_id"] = (df_fmdict["agg_id"] * 1000 + df_fmdict["layer_id"]).rank(method="dense").astype(int)
         df_accnums = df_fmdict.drop_duplicates(subset=['item_id','policy_name'])[['item_id','policy_name']]
-	df_accnums.columns = ['item_id','account_desc']
-	df_itemdict = pd.merge(df_itemdict,df_accnums)
+        df_accnums.columns = ['item_id','account_desc']
+        df_itemdict = pd.merge(df_itemdict,df_accnums)
         df_itemdict["location_desc"] = df_itemdict["account_desc"].map(str) + '--' + df_itemdict["location_desc"].map(str)
 
         for index, row in df_output_file_details.iterrows():
@@ -314,15 +346,7 @@ def do_run_prog_oasis(processrunid):
                     logging.getLogger().debug("df_summarydict_distinct: {}".format(df_summarydict_distinct))
                 df_output_temp.to_csv(output, encoding='utf-8', index=False)
 
-
-    except Exception as e:
-        flamingo_db_utils.update_process_run_status(processrunid, "Failed")
-        if element_run_id != -1:
-            flamingo_db_utils.log_element_run_to_db(element_run_id, 'Failed: ', str(e))
-        logging.getLogger().exception(
-            "Failed to run prog oasis: {}".format(processrunid))
-
-
+@force_gc_collect
 @log.oasis_log()
 def generate_summary_files(processrunid):
 
@@ -407,7 +431,7 @@ def generate_summary_files(processrunid):
 
     return input_location
 
-
+@force_gc_collect
 @log.oasis_log()
 def get_analysis_settings_json(processrunid):
 
@@ -511,7 +535,7 @@ def get_analysis_settings_json(processrunid):
     apijson = jsonpickle.encode(analysis_settings)
     return json.loads(apijson)
 
-
+@force_gc_collect
 @log.oasis_log()
 def extract_tarball(tar_file, output_dir):
     unzip_command = "tar xf {} -C {}".format(tar_file, output_dir)
@@ -521,7 +545,7 @@ def extract_tarball(tar_file, output_dir):
             "unzip command: {}".format(unzip_command))
         raise Exception("Failed to extract tarball")
 
-
+@force_gc_collect
 @log.oasis_log()
 def process_keys_response(progoasisid, modelid, apiJSON, sessionid):
     all_location_count = 0
@@ -582,6 +606,7 @@ def process_keys_response(progoasisid, modelid, apiJSON, sessionid):
     flamingo_db_utils.create_api_error_file_record(
         "ExposureKeysError_" + str(ts) + ".csv", progoasisid)
 
+@force_gc_collect
 @log.oasis_log()
 def do_call_keys_service(progoasisid):
 
@@ -623,7 +648,7 @@ def do_call_keys_service(progoasisid):
 
     return {'In': 'Yes'}
 
-
+@force_gc_collect
 @log.oasis_log()
 def do_generate_oasis_files(progoasisid):
 
@@ -727,6 +752,7 @@ def do_generate_oasis_files(progoasisid):
     if is_reinsurance:
         do_generate_reinsurance_files(progoasisid)
 
+@force_gc_collect
 @log.oasis_log()
 def do_generate_reinsurance_files(progoasisid):
 
@@ -851,21 +877,3 @@ def do_generate_reinsurance_files(progoasisid):
             ri_scope_df,
             fm_xrefs_fp,
             input_location)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
