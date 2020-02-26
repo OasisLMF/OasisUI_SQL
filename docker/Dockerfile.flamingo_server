@@ -1,4 +1,4 @@
-FROM coreoasis/oasis_base:0.398.1
+FROM coreoasis/oasis_base:0.399.0
 #FROM oasis_base:testRI
 
 # Create and switch to jenkins user
