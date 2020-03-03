@@ -389,7 +389,7 @@ def generate_summary_files(processrunid):
 
     gulsummaryxref = input_location + "/gulsummaryxref.csv"
     destination = open(gulsummaryxref, 'wb')
-    destination.write("coverage_id,summary_id,summaryset_id\n")
+    destination.write("item_id,summary_id,summaryset_id\n")
     shutil.copyfileobj(
         open(input_location + "/gulsummaryxref_temp.csv", 'rb'),
         destination)
